@@ -58,10 +58,11 @@ public class SwiftFlutterSharingIntentPlugin: NSObject, FlutterStreamHandler, Fl
     
     // By Adding bundle id to prefix, we will ensure that the correct app will be openned
     public func hasSameSchemePrefix(url: URL?) -> Bool {
-        if let url = url, let appDomain = Bundle.main.bundleIdentifier {
-            return url.absoluteString.hasPrefix("\(self.customSchemePrefix)-\(appDomain)")
-        }
-        return false
+        return true
+        // if let url = url, let appDomain = Bundle.main.bundleIdentifier {
+        //     return url.absoluteString.hasPrefix("\(self.customSchemePrefix)-\(appDomain)")
+        // }
+        // return false
     }
     
     // This is the function called on app startup with a shared link if the app had been closed already.
@@ -186,12 +187,12 @@ public class SwiftFlutterSharingIntentPlugin: NSObject, FlutterStreamHandler, Fl
                     eventSinkMedia?(toJson(data: latestSharing))
                 }
             } else {
-                latestSharing = [SharingFile.init(value: url.absoluteString, thumbnail: nil, duration: nil, type: SharingFileType.text)]
+                latestSharing = [SharingFile.init(value: url.absoluteString, thumbnail: nil, duration: nil, type: SharingFileType.url)]
 
                 if(setInitialData) {
                     initialSharing = latestSharing
                 }
-                eventSinkMedia?(latestSharing)
+                eventSinkMedia?(toJson(data: latestSharing))
             }
             return true
         }
