@@ -110,9 +110,15 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
 
       }
       intent.action == Intent.ACTION_VIEW -> { // Opening URL
+
+        var dataString = intent.dataString ?: "";
+        if (dataString.startsWith("file://")
+          || dataString.startsWith("content://")) {
+          dataString = MyFileDirectory.getAbsolutePath(applicationContext, Uri.parse(dataString)) ?: ""
+        }
         val value = JSONArray().put(
           JSONObject()
-            .put("value", intent.dataString)
+            .put("value", dataString)
             .put("type", MediaType.URL.ordinal)
         )
         if (initial) initialSharing = value
