@@ -10,13 +10,16 @@ import android.provider.MediaStore
 import android.util.Log
 import android.webkit.URLUtil
 import androidx.annotation.NonNull
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.*
+import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -43,6 +46,7 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
 
   /// The MethodChannel that will the communication between Flutter and native Android
   private lateinit var channel : MethodChannel
+  private lateinit var eventChannel: EventChannel
 
   private var eventSinkSharing: EventChannel.EventSink? = null
 
@@ -54,8 +58,8 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
     channel = MethodChannel(binaryMessenger, "flutter_sharing_intent")
     channel.setMethodCallHandler(this)
 
-    val eChannelSharing = EventChannel(binaryMessenger, EVENTS_CHANNEL_MEDIA)
-    eChannelSharing.setStreamHandler(this)
+    eventChannel = EventChannel(binaryMessenger, EVENTS_CHANNEL_MEDIA)
+    eventChannel.setStreamHandler(this)
 
   }
 
@@ -83,6 +87,9 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     channel.setMethodCallHandler(null)
+    initialSharing = null
+    latestSharing = null
+    eventChannel.setStreamHandler(null)
   }
 
   private fun handleIntent(intent: Intent, initial: Boolean) {
@@ -91,14 +98,13 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
       (intent.type?.startsWith("text") != true)
               && (intent.action == Intent.ACTION_SEND
               || intent.action == Intent.ACTION_SEND_MULTIPLE) -> { // Sharing images or videos
-
-
         val value = getSharingUris(intent)
         if (initial) initialSharing = value
         latestSharing = value
         Log.w(TAG,"handleIntent ==>> $value")
         eventSinkSharing?.success(value?.toString())
       }
+
       (intent.type == null || intent.type?.startsWith("text") == true)
               && intent.action == Intent.ACTION_SEND -> { // Sharing text
 
@@ -109,13 +115,9 @@ class FlutterSharingIntentPlugin: FlutterPlugin, ActivityAware, MethodCallHandle
         eventSinkSharing?.success(value?.toString())
 
       }
-      intent.action == Intent.ACTION_VIEW -> { // Opening URL
 
-        var dataString = intent.dataString ?: "";
-        if (dataString.startsWith("file://")
-          || dataString.startsWith("content://")) {
-          dataString = MyFileDirectory.getAbsolutePath(applicationContext, Uri.parse(dataString)) ?: ""
-        }
+      intent.action == Intent.ACTION_VIEW -> { // Opening URL
+        val dataString = MyFileDirectory.getAbsolutePath(applicationContext, Uri.parse(intent.dataString)) ?: ""
         val value = JSONArray().put(
           JSONObject()
             .put("value", dataString)
