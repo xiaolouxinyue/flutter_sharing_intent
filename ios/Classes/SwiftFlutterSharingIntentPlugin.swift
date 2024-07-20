@@ -188,7 +188,20 @@ public class SwiftFlutterSharingIntentPlugin: NSObject, FlutterStreamHandler, Fl
                 }
             } else {
                 latestSharing = [SharingFile.init(value: url.absoluteString, thumbnail: nil, duration: nil, type: SharingFileType.url)]
-
+                if url.absoluteString.hasPrefix("file://") {
+                    do {
+                        let tmpDir = FileManager.default.temporaryDirectory
+                        let fileName = url.lastPathComponent
+                        let filePath = tmpDir.path + "/" + fileName
+                        if FileManager.default.fileExists(atPath: filePath) {
+                            try FileManager.default.removeItem(atPath: filePath)
+                        }
+                        try FileManager.default.moveItem(atPath: url.path, toPath: filePath)
+                        latestSharing = [SharingFile.init(value: filePath, thumbnail: nil, duration: nil, type: SharingFileType.file)]
+                    } catch {
+                        debugPrint(error.localizedDescription)
+                    }
+                }
                 if(setInitialData) {
                     initialSharing = latestSharing
                 }
