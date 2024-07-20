@@ -189,17 +189,25 @@ public class SwiftFlutterSharingIntentPlugin: NSObject, FlutterStreamHandler, Fl
             } else {
                 latestSharing = [SharingFile.init(value: url.absoluteString, thumbnail: nil, duration: nil, type: SharingFileType.url)]
                 if url.absoluteString.hasPrefix("file://") {
+                    let isAcccessing = url.startAccessingSecurityScopedResource()
                     do {
                         let tmpDir = FileManager.default.temporaryDirectory
+                        let importDir = tmpDir.appendingPathComponent("import")
+                        if !FileManager.default.fileExists(atPath: importDir.path) {
+                            try? FileManager.default.createDirectory(atPath: importDir.path, withIntermediateDirectories: true)
+                        }
                         let fileName = url.lastPathComponent
-                        let filePath = tmpDir.path + "/" + fileName
+                        let filePath = importDir.path + "/" + fileName
                         if FileManager.default.fileExists(atPath: filePath) {
                             try FileManager.default.removeItem(atPath: filePath)
                         }
-                        try FileManager.default.moveItem(atPath: url.path, toPath: filePath)
+                        try FileManager.default.copyItem(atPath: url.path, toPath: filePath)
                         latestSharing = [SharingFile.init(value: filePath, thumbnail: nil, duration: nil, type: SharingFileType.file)]
                     } catch {
                         debugPrint(error.localizedDescription)
+                    }
+                    if isAcccessing {
+                        url.stopAccessingSecurityScopedResource()
                     }
                 }
                 if(setInitialData) {
